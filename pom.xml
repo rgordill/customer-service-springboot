@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://ww.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.redhat</groupId>
+	<artifactId>customer-service-springboot</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+
+	<name>customer-service</name>
+	<description>Spring Boot JPA Demo</description>
+	<packaging>jar</packaging>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<java.version>21</java.version>
+
+		<!-- Spring and Helpers -->
+		<springboot.version>3.2.4</springboot.version>
+		<springcloud.version>2023.0.1</springcloud.version>
+		<springdoc.version>2.5.0</springdoc.version>
+		<lombok.version>1.18.32</lombok.version>
+
+		<!-- JPA Drivers -->
+		<hsqldb.version>2.7.2</hsqldb.version>
+		<postgresql.version>42.7.0</postgresql.version>
+
+		<!-- Observability -->
+		<micrometer-tracing.version>1.2.5</micrometer-tracing.version>
+		<opentelemetry.version>1.37.0</opentelemetry.version>
+		<datasource-otel.version>1.0.3</datasource-otel.version>
+
+		<!-- Eclipse jKube for kubernetes -->
+		<jkube-plugin.version>1.16.2</jkube-plugin.version>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<url>https://repo.spring.io/milestone</url>
+		</repository>
+	</repositories>
+
+	<profiles>
+		<!-- Local deployment -->
+		<profile>
+			<id>local</id>
+			<properties>
+				<deployment.mode>local</deployment.mode>
+			</properties>
+			<dependencies>
+				<!-- Developer tools, to be clean -->
+				<!-- <dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-devtools</artifactId>
+					<optional>true</optional>
+				</dependency> -->
+
+				<!-- Spring Admin Client -->
+				<!-- <dependency>
+					<groupId>de.codecentric</groupId>
+					<artifactId>spring-boot-admin-starter-client</artifactId>
+					<version>3.0.2</version>
+				</dependency>
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-security</artifactId>
+				</dependency> -->
+
+				<!-- JPA Driver-->
+				<dependency>
+					<groupId>org.hsqldb</groupId>
+					<artifactId>hsqldb</artifactId>
+					<version>${hsqldb.version}</version>
+				</dependency>
+
+				<!-- Crac -->
+				<dependency>
+					<groupId>org.crac</groupId>
+					<artifactId>crac</artifactId>
+					<version>1.4.0</version>
+				</dependency>
+
+			</dependencies>
+
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+						<configuration>
+							<jvmArguments>
+								<!-- -Dcom.sun.management.jmxremote=true
+								-Dcom.sun.management.jmxremote.port=1099
+								-Dcom.sun.management.jmxremote.authenticate=false
+								-Dcom.sun.management.jmxremote.ssl=false
+								-Dcom.sun.management.jmxremote.registry.ssl=false
+								-Dcom.sun.management.jmxremote.rmi.port=1098
+								-Djava.rmi.server.hostname=localhost
+								-XX:StartFlightRecording:filename=/tmp/recording.jfr,duration=60s --> -XX:CRaCCheckpointTo=/tmp/crack </jvmArguments>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+
+		</profile>
+
+		<!-- Deployment on k8s -->
+		<profile>
+			<id>kubernetes</id>
+			<properties>
+				<jkube.domain>minikube.cloud</jkube.domain>
+				<!--jkube.domain>apps.demo.r78cj.azure.redhatworkshops.io</jkube.domain-->
+				<jkube.createExternalUrls>true</jkube.createExternalUrls>
+				<jkube.enricher.jkube-ingress.targetApiVersion>networking.k8s.io/v1</jkube.enricher.jkube-ingress.targetApiVersion>
+				<deployment.mode>kubernetes</deployment.mode>
+			</properties>
+			<dependencies>
+				<!-- Spring Cloud Kubernetes -->
+				<dependency>
+					<groupId>org.springframework.cloud</groupId>
+					<artifactId>spring-cloud-starter-kubernetes-fabric8-config</artifactId>
+				</dependency>
+
+				<!-- JDBC Driver -->
+				<dependency>
+					<groupId>org.postgresql</groupId>
+					<artifactId>postgresql</artifactId>
+					<version>${postgresql.version}</version>
+				</dependency>
+
+			</dependencies>
+
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.eclipse.jkube</groupId>
+						<artifactId>kubernetes-maven-plugin</artifactId>
+						<version>${jkube-plugin.version}</version>
+						<configuration>
+							<images>
+								<image>
+									<!--name>quay.io/rgordill/%a:%t</name-->
+									<name>
+										quay.io/rgordill/customer-service-springboot:snapshot-231130-093000</name>
+									<!--registry>quay.io</registry-->
+									<build>
+										<from>quay.io/jkube/jkube-java:0.0.21</from>
+										<assembly>
+											<targetDir>/deployments</targetDir>
+										</assembly>
+									</build>
+								</image>
+							</images>
+							<resources>
+								<annotations>
+									<ingress>
+										<property>
+											<name>kubernetes.io/ingress.class</name>
+											<value>nginx</value>
+										</property>
+									</ingress>
+								</annotations>
+								<serviceAccounts>
+									<serviceAccount>
+										<name>${project.artifactId}</name>
+										<deploymentRef>${project.artifactId}</deploymentRef>
+									</serviceAccount>
+								</serviceAccounts>
+								<configMap>
+									<name>${project.artifactId}-config</name>
+									<entries>
+										<entry>
+											<file>src/main/resources/application.properties</file>
+										</entry>
+										<entry>
+											<file>src/main/resources/application-${deployment.mode}.properties</file>
+										</entry>
+									</entries>
+								</configMap>
+								<controller>
+									<replicas>1</replicas>
+									<containerResources>
+										<requests>
+											<memory>512Mi</memory>
+											<cpu>0.5</cpu>
+										</requests>
+										<limits>
+											<memory>512Mi</memory>
+											<cpu>0.5</cpu>
+										</limits>
+									</containerResources>
+									<volumes>
+										<volume>
+											<name>config-volume</name>
+											<type>configMap</type>
+											<configMapName>${project.artifactId}-config</configMapName>
+											<mounts>
+												<mount>/opt/jboss/etc</mount>
+											</mounts>
+										</volume>
+										<!--volume>
+										<name>secret-volume-jmx</name>
+										<type>secret</type>
+										<secretName>${project.artifactId}-jfr-jmx-secret</secretName>
+										<mounts>
+											<mount>/var/run/secrets/jmx</mount>
+										</mounts>
+									</volume>
+									<volume>
+										<name>secret-volume-mbean</name>
+										<type>secret</type>
+										<secretName>${project.artifactId}-jfr-mbean-secret</secretName>
+										<mounts>
+											<mount>/var/run/secrets/mbean</mount>
+										</mounts>
+									</volume-->
+									</volumes>
+									<env>
+										<!-- disable jolokia -->
+										<AB_JOLOKIA_OFF>true</AB_JOLOKIA_OFF>
+										<!-- <JAVA_OPTIONS> -->
+										<!-- Insecure 
+									-Dcom.sun.management.jmxremote=true 
+									-Dcom.sun.management.jmxremote.port=1099
+									-Dcom.sun.management.jmxremote.authenticate=false
+									-Dcom.sun.management.jmxremote.rmi.port=1098
+									-Dcom.sun.management.jmxremote.ssl=false
+									-Dcom.sun.management.jmxremote.registry.ssl=false		
+									-Djava.rmi.server.hostname=localhost -->
+										<!-- Change ssl and add keystore for ssl jmx secured
+										-Dcom.sun.management.jmxremote.ssl=true
+										-Djavax.net.ssl.keyStore=/var/run/secrets/jmx/keystore.jks
+										-Djavax.net.ssl.keyStorePassword=changeme -->
+										<!-- </JAVA_OPTIONS> -->
+										<JAVA_ARGS>
+											--spring.profiles.active=${deployment.mode}
+											--spring.cloud.kubernetes.config.name=customer-service-config
+											--spring.cloud.kuberentes.config.paths=/opt/jboss/etc
+											--spring.cloud.kubernetes.config.enableApi=false
+										</JAVA_ARGS>
+									</env>
+								</controller>
+							</resources>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+	<dependencyManagement>
+		<dependencies>
+
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${springboot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${springcloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>io.micrometer</groupId>
+				<artifactId>micrometer-tracing-bom</artifactId>
+				<version>${micrometer-tracing.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>io.opentelemetry</groupId>
+				<artifactId>opentelemetry-bom</artifactId>
+				<version>${opentelemetry.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- [CVE-2023-33201] -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.76</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- spring data jpa-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<!-- Lombok -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>${lombok.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- OpenAPI -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
+
+		<!-- Observability through Actuator -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- Monitoring -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+		<!-- Tracing -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-otel</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-exporter-otlp</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>net.ttddyy.observation</groupId>
+			<artifactId>datasource-micrometer-spring-boot</artifactId>
+			<version>${datasource-otel.version}</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.13.0</version>
+				<configuration>
+					<release>${java.version}</release>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<archive>
+						<addMavenDescriptor>false</addMavenDescriptor>
+					</archive>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${springboot.version}</version>
+				<configuration>
+					<profiles>
+						<profile>${deployment.mode}</profile>
+					</profiles>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -1,0 +1,12 @@
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: customer-service-cache
+spec:
+  endpoints:
+  - path: /actuator/prometheus
+    port: "8080"
+  selector:
+    matchLabels:
+      app: customer-service-cache-springboot
