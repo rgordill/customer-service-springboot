@@ -14,10 +14,12 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<java.version>21</java.version>
+		<maven.compiler.release>21</maven.compiler.release>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 
 		<!-- Spring and Helpers -->
-		<springboot.version>3.2.4</springboot.version>
+		<springboot.version>3.2.5</springboot.version>
 		<springcloud.version>2023.0.1</springcloud.version>
 		<springdoc.version>2.5.0</springdoc.version>
 		<lombok.version>1.18.32</lombok.version>
@@ -34,13 +36,6 @@
 		<!-- Eclipse jKube for kubernetes -->
 		<jkube-plugin.version>1.16.2</jkube-plugin.version>
 	</properties>
-
-	<repositories>
-		<repository>
-			<id>spring-milestones</id>
-			<url>https://repo.spring.io/milestone</url>
-		</repository>
-	</repositories>
 
 	<profiles>
 		<!-- Local deployment -->
@@ -367,9 +362,9 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
-				<configuration>
+				<!--configuration>
 					<release>${java.version}</release>
-				</configuration>
+				</configuration-->
 			</plugin>
 
 			<plugin>
